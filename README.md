@@ -13,3 +13,6 @@ Actions that send, post, pay, delete or change settings return `HOLD`, and run o
 
 ## Speed (measured on a Pixel)
 Reading the screen 0.2s, typing 0.2s, tapping by name ~1.1s, opening an app ~1.7s.
+
+## License
+MIT, see [LICENSE](LICENSE).

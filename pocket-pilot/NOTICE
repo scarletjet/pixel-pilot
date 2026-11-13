@@ -1,0 +1,16 @@
+Pocket Pilot
+Copyright 2026 Scarlet's Workshop LLC
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This app bundles or downloads the following third-party software and data:
+
+- Vosk speech recognition (vosk-android 0.3.47), Copyright Alpha Cephei Inc.
+  Apache License 2.0. https://github.com/alphacep/vosk-api
+- JNA (Java Native Access) 5.13.0. Dual licensed under the Apache License 2.0
+  and LGPL 2.1; used here under the Apache License 2.0. https://github.com/java-native-access/jna
+- Vosk English speech model (vosk-model-small-en-us-0.15), Copyright Alpha Cephei Inc.
+  Apache License 2.0. Not bundled: the app downloads it once, when you ask it to.
+
+Claude and Claude Code are products of Anthropic. Android and Pixel are trademarks of Google LLC.
+Pocket Pilot is an independent project and is not made, endorsed or supported by Anthropic or Google.

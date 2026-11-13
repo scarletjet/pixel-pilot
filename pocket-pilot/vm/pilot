@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+# pilot: run the voice bridge in the background (tmux), so it keeps going when Terminal isn't on screen.
+DIR="$HOME/phone-control"
+LOG="$DIR/bridge.log"
+CONF="$HOME/.config/phone-control"
+SHARED="${PILOT_SHARED_DIR:-$HOME/pocket-pilot}"   # the one shared conversation lives here
+CS=pilot-claude
+slug() { printf '%s' "$1" | sed 's/[^A-Za-z0-9]/-/g'; }
+start_claude() {
+  [ "${PILOT_MODE:-shared}" = headless ] && return 0
+  tmux has-session -t =$CS 2>/dev/null && return 0
+  mkdir -p "$SHARED"; python3 "$DIR/voice_bridge.py" --write-prompt
+  tmux new-session -d -s $CS -x 120 -y 40 -c "$SHARED" "$DIR/pilot _claude"
+}
+case "${1:-status}" in
+  start)
+    if tmux has-session -t =pilot 2>/dev/null; then echo "Pocket Pilot bridge is already running."; exit 0; fi
+    (phonectl connect >/dev/null 2>&1 &)
+    start_claude
+    tmux new-session -d -s pilot "while true; do python3 $DIR/voice_bridge.py >>$LOG 2>&1; sleep 2; done"
+    sleep 1
+    echo "Pocket Pilot bridge started on port 8765."
+    [ "${PILOT_MODE:-shared}" = headless ] || echo "Shared Claude conversation running. See it with: pilot chat"
+    echo "Token for the app: $(python3 $DIR/voice_bridge.py --token)"
+    ;;
+  stop)    tmux kill-session -t =pilot 2>/dev/null && echo "Bridge stopped." || echo "Bridge wasn't running."
+           [ "$2" = all ] && tmux kill-session -t =$CS 2>/dev/null && echo "Shared Claude stopped." ;;
+  restart) "$0" stop; "$0" start ;;
+  chat)
+    # the shared conversation: same one the bubble and the Claude app (Remote Control) use
+    start_claude; sleep 0.5
+    echo "Joining the shared conversation. To leave it running: just switch apps, or press Ctrl-b then d."
+    sleep 1
+    tmux attach -t =$CS ;;
+  _claude)
+    # runs inside tmux: one interactive Claude Code session, restarted with --continue if it ever exits
+    cd "$SHARED" || exit 1
+    PROMPT="$(cat "$CONF/shared-prompt.txt" 2>/dev/null)"
+    while true; do
+      ARGS=(--allowedTools mcp__phone WebSearch)
+      [ -n "$PROMPT" ] && ARGS+=(--append-system-prompt "$PROMPT")
+      ls "$HOME/.claude/projects/$(slug "$SHARED")"/*.jsonl >/dev/null 2>&1 && ARGS+=(--continue)
+      claude --help 2>/dev/null | grep -q -- '--remote-control' && ARGS+=(--remote-control "Pocket Pilot")
+      claude "${ARGS[@]}"
+      echo "Claude closed. Starting it again in 3 seconds (Ctrl-C to stop)..."
+      sleep 3
+    done ;;
+  token)   python3 "$DIR/voice_bridge.py" --token ;;
+  log)     tail -n 40 "$LOG" ;;
+  timing)
+    python3 - "$HOME/phone-control/timing.log" <<'PY'
+import json, sys, collections
+try:
+    rows = [json.loads(l) for l in open(sys.argv[1]) if l.strip()]
+except FileNotFoundError:
+    print("No timing yet. Ask the bubble something first."); sys.exit()
+turns = [r for r in rows if r.get("kind") == "turn"][-10:]
+tools = [r for r in rows if r.get("kind") == "tool"][-300:]
+s = lambda ms: "%.1fs" % ((ms or 0) / 1000.0)
+print("Last questions (newest last):")
+for t in turns:
+    parts = []
+    if "heard_to_bridge_ms" in t: parts.append("voice->terminal " + s(t["heard_to_bridge_ms"]))
+    if "first_word_ms" in t: parts.append("first words " + s(t["first_word_ms"]))
+    if "shortcut" in t: parts.append("shortcut " + t["shortcut"])
+    parts.append("tools %d (%s)" % (t.get("tool_calls", 0), s(t.get("tool_ms"))))
+    parts.append("thinking " + s(t.get("thinking_ms")))
+    parts.append("total " + s(t.get("total_ms")))
+    print("  " + " | ".join(parts))
+by = collections.defaultdict(list)
+for t in tools: by[(t["tool"] or "?").replace("phone_", ""), t.get("via", "?")].append(t["ms"])
+if by:
+    print("Phone tools (average, slowest first):")
+    for (name, via), ms in sorted(by.items(), key=lambda kv: -sum(kv[1]) / len(kv[1])):
+        print("  %-16s %-4s %6s  x%d" % (name, via, s(sum(ms) / len(ms)), len(ms)))
+PY
+    ;;
+  watch)   tmux attach -t =pilot ;;
+  status)
+    if tmux has-session -t =pilot 2>/dev/null; then echo "Bridge: running"; else echo "Bridge: stopped (pilot start)"; fi
+    if tmux has-session -t =$CS 2>/dev/null; then echo "Shared Claude: running (pilot chat to join)"; else echo "Shared Claude: not running"; fi
+    phonectl status 2>/dev/null || true
+    ;;
+  *) echo "pilot start | chat | stop [all] | restart | token | status | log | timing | watch" ;;
+esac

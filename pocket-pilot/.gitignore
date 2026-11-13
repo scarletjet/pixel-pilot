@@ -1,0 +1,7 @@
+app/out/
+app/build/
+*.keystore
+*.jks
+*.idsig
+__pycache__/
+*.bundle

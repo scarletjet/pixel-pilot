@@ -14,5 +14,8 @@ Actions that send, post, pay, delete or change settings return `HOLD`, and run o
 ## Speed (measured on a Pixel)
 Reading the screen 0.2s, typing 0.2s, tapping by name ~1.1s, opening an app ~1.7s.
 
+## Pocket Pilot (wake word edition)
+[`pocket-pilot/`](pocket-pilot/) is a full public build: the Android app, the bridge and a setup script, with a hot mic that only acts after a wake word ("Hey Pilot" by default). The wake word is heard on the phone with an offline model, and nothing else you say is kept or sent. It has its own README and is licensed under Apache 2.0 (see `pocket-pilot/LICENSE`).
+
 ## License
-MIT, see [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE). The `pocket-pilot/` folder is Apache 2.0.

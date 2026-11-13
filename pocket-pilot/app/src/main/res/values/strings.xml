@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="a11y_description">Lets Claude in your Linux Terminal read the screen and tap, swipe and type for you, fast. Claude asks before it sends, pays, deletes or changes settings. Turn it off here any time.</string>
+</resources>
